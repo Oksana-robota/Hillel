@@ -35,7 +35,7 @@ class FileStorage:
             with open(path, 'r') as opened_file:
                 text = opened_file.readlines()
                 return path, json.loads(text[0])
-        except (FileNotFoundError,IndexError):
+        except (FileNotFoundError, IndexError):
             return path, {}
 
     @staticmethod
@@ -67,18 +67,29 @@ class Courses:
 
 
 class App:
-    menu_items = ['1 - Add course name', '2 - Show all the courses', '3 - Add student to the course', '4 - Exit']
+    menu_items = ['1 - Add course name', '2 - Show all the courses',
+                  '3 - Add student to the course', '4 - Delete the course/student', '5 - Exit']
 
     def __init__(self, storage):
         self.path = storage[0]
         self.storage = storage[1]
 
     def add_course(self):
+        list_course = self.storage.keys()
         print('Adding course')
         course_name = input('Enter course name: ')
         if course_name:
-            self.storage[course_name] = []
-            print('Course added successfully')
+            if course_name not in list_course:
+                self.storage[course_name] = []
+                print('Course added successfully')
+            else:
+                print('This course already exists. You could delete the old one or write different name')
+                print('1 - Delete an old one', '2 - Create a new one', sep='\n')
+                s = input()
+                if s == '1':
+                    self.delete_course()
+                elif s == '2':
+                    self.add_course()
         else:
             print('Course name was not written. Try again')
         return self.run()
@@ -114,7 +125,17 @@ class App:
                         student = dict()
                         student['first_name'] = input('Write first name:')
                         student['last_name'] = input('Write last name:')
-                        self.storage[course[int(s)]].append(student)
+                        if student in self.storage[course[int(s)]]:
+                            print('This student is already on course. Please delete or add new one')
+                            print('1 - Delete an old one', '2 - Create a new one', sep='\n')
+                            r = input()
+                            if r == '1':
+                                self.delete_student()
+                            elif r == '2':
+                                self.add_student()
+                        else:
+                            self.storage[course[int(s)]].append(student)
+                            print('Student was successfully added')
                     else:
                         print('There is no such course. Add please one')
                     break
@@ -125,14 +146,49 @@ class App:
             print('There are no courses. Please add at least one.')
         self.run()
 
-        # self.storage[s].append(student)
-
     def courses_list(self):
         print('Listing courses')
         if not self.storage:
             print('There are no records. Add please one at least')
         else:
             print(*FileStorage().list_of_courses(self.storage), sep='\n')
+        self.run()
+
+    def courses_lists(self):
+        c = 1
+        course_list = {}
+        for i in self.storage.keys():
+            course_list[c] = i
+            c += 1
+        return course_list
+
+    def delete_course(self):
+        list1 = self.courses_lists()
+        [print(f'{key} - {value}') for key, value in list1.items()]
+        num_of_course = input('Choose which one of course you would like to delete:\n')
+        del self.storage[list1[int(num_of_course)]]
+        print('The course was deleted successfully.')
+        self.run()
+
+    def delete_student(self):
+        list2 = self.courses_lists()
+        [print(f'{key} - {value}') for key, value in list2.items()]
+        num_of_course1 = input('Choose the course from what you would like to delete a student:\n')
+        student_list1 = self.storage[list2[int(num_of_course1)]]
+        c = 1
+        stud_list = {}
+        for i in student_list1:
+            stud_list[c] = i
+            c += 1
+        [print(f'{key} - first_name: {value["first_name"]}, last_name: {value["last_name"]}')
+         for key, value in stud_list.items()]
+        stud = input('Which student you would like to delete:\n')
+        try:
+            student_list1.remove(stud_list[int(stud)])
+            self.storage[list2[int(num_of_course1)]] = student_list1
+            print('The record was deleted successfully')
+        except:
+            print('There is no such number of student. Try again')
         self.run()
 
     def __exit__(self):
@@ -149,6 +205,14 @@ class App:
         elif action == '3':
             self.add_student()
         elif action == '4':
+            print('What would you like to delete?')
+            print('1 - Course', '2 - Student', sep='\n')
+            choose = input()
+            if choose == '1':
+                self.delete_course()
+            elif choose == '2':
+                self.delete_student()
+        elif action == '5':
             self.__exit__()
         else:
             print('No such menu item. Try again')
@@ -156,7 +220,6 @@ class App:
 
 
 if __name__ == '__main__':
-    # file_path = input('Enter storage path: ')
     file_path = 'file.txt'
     app = App(FileStorage.load_from_file(file_path))
     app.run()
